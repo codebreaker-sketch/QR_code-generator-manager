@@ -1,0 +1,20 @@
+﻿@using qr_website.Services
+@inject ThemeService ThemeService
+
+<button @onclick="ToggleTheme" class="theme-toggle">
+    @if (ThemeService.IsDarkMode)
+    {
+        <span>☀️ Light Mode</span>
+    }
+    else
+    {
+        <span>🌙 Dark Mode</span>
+    }
+</button>
+
+@code {
+    private void ToggleTheme()
+    {
+        ThemeService.ToggleTheme();
+    }
+}

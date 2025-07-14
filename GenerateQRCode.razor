@@ -1,0 +1,150 @@
+﻿
+@page "/generate"
+@using qr_website.Services
+@using qr_website.Models
+@inject QRCodeService QRService
+
+<h3>Generate QR Code</h3>
+
+<div class="mb-3">
+    <label>Name:</label>
+    <input @bind="name" class="form-control" />
+</div>
+
+<div class="mb-3">
+    <label>QR Code Type:</label>
+    <select @bind="selectedType" class="form-select">
+        <option value="Generic">Generic (URL or Text)</option>
+        <option value="WiFi">WiFi</option>
+        <option value="Email">Email</option>
+        <option value="Phone">Phone Number</option>
+    </select>
+</div>
+
+@if (selectedType == QRCodeType.Generic)
+{
+    <div class="mb-3">
+        <label>URL or Text:</label>
+        <input @bind="data" class="form-control" />
+    </div>
+}
+else if (selectedType == QRCodeType.WiFi)
+{
+    <div class="mb-3">
+        <label>SSID (WiFi Name):</label>
+        <input @bind="wifiSSID" class="form-control" />
+    </div>
+    <div class="mb-3">
+        <label>Password:</label>
+        <input @bind="wifiPassword" class="form-control" type="password" />
+    </div>
+    <div class="mb-3">
+        <label>Authentication Type:</label>
+        <select @bind="wifiAuthType" class="form-select">
+            <option value="WPA">WPA/WPA2</option>
+            <option value="WEP">WEP</option>
+            <option value="nopass">None (Open Network)</option>
+        </select>
+    </div>
+}
+else if (selectedType == QRCodeType.Email)
+{
+    <div class="mb-3">
+        <label>Email Address:</label>
+        <input @bind="email" type="email" class="form-control" />
+    </div>
+}
+else if (selectedType == QRCodeType.Phone)
+{
+    <div class="mb-3">
+        <label>Phone Number:</label>
+        <input @bind="phone" type="tel" class="form-control" />
+    </div>
+}
+
+<button class="btn btn-primary" @onclick="OnGenerateQRCode">Generate</button>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger mt-3">@errorMessage</div>
+}
+
+@if (!string.IsNullOrEmpty(generatedImage))
+{
+    <h4>QR Code:</h4>
+    <img src="data:image/png;base64,@generatedImage" style="max-width: 200px; height: auto;" />
+}
+
+@code {
+    private string name = "";
+    private QRCodeType selectedType = QRCodeType.Generic;
+    private string data = "";
+    private string wifiSSID = "";
+    private string wifiPassword = "";
+    private string wifiAuthType = "WPA";
+    private string email = "";
+    private string phone = "";
+    private string generatedImage = "";
+    private string errorMessage = "";
+
+    private async Task OnGenerateQRCode()
+    {
+        errorMessage = string.Empty;
+        generatedImage = "";
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            errorMessage = "Name is required.";
+            return;
+        }
+
+        string rawData = selectedType switch
+        {
+            QRCodeType.Generic => data,
+            QRCodeType.WiFi => $"{wifiSSID};{wifiPassword};{wifiAuthType}",
+            QRCodeType.Email => email,
+            QRCodeType.Phone => phone,
+            _ => data,
+        };
+
+        // Validation
+        switch (selectedType)
+        {
+            case QRCodeType.Generic:
+                if (string.IsNullOrWhiteSpace(data))
+                {
+                    errorMessage = "URL or Text is required for Generic QR Code.";
+                    return;
+                }
+                break;
+
+            case QRCodeType.WiFi:
+                if (string.IsNullOrWhiteSpace(wifiSSID))
+                {
+                    errorMessage = "SSID is required for WiFi QR Code.";
+                    return;
+                }
+                break;
+
+            case QRCodeType.Email:
+                if (string.IsNullOrWhiteSpace(email))
+                {
+                    errorMessage = "Email address is required.";
+                    return;
+                }
+                break;
+
+            case QRCodeType.Phone:
+                if (string.IsNullOrWhiteSpace(phone))
+                {
+                    errorMessage = "Phone number is required.";
+                    return;
+                }
+                break;
+        }
+
+        var newEntry = await QRService.AddQRCode(name, rawData, selectedType);
+        generatedImage = newEntry.ImageBase64;
+    }
+}
+
